@@ -1,5 +1,1 @@
-This is your new *vault*.
-
-Make a note of something, [[create a link]], or try [the Importer](https://help.obsidian.md/Plugins/Importer)!
-
-When you're ready, delete this note and make the vault your own.
+This new vault documents stuff that will be published in an mcp server and added to a registry that used by Kiro, Copilot, and Quick.
