@@ -1,6 +1,0 @@
-# Each top-level directory is owned by its team.
-# GitHub only reads this root file, not nested .github/CODEOWNERS.
-*                      @ppottorff
-/AgentsSkills/         @SmarterPrey/AgentsSkillsDevs
-/AgentRegistries/      @SmarterPrey/AgentRegistryDevs
-/DevOps-Team-Content/  @SmarterPrey/DevOpsDevs

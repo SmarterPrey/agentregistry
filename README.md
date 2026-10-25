@@ -39,13 +39,11 @@ npm run synth
 
 ## Working in this repo
 
-Open a pull request against `main`. [CODEOWNERS](.github/CODEOWNERS) requests review from the team that owns each directory you touch. A change that spans directories needs approval from each owning team, and lands as one commit.
+Open a pull request against `main`. A change that spans directories lands as one commit.
 
 ## Ownership and review
 
-- GitHub only reads the root CODEOWNERS file, so ownership is assigned per directory there.
-- GitHub honors a team in CODEOWNERS only if it has write access to the repo. The teams don't have write access here yet, so those lines are flagged invalid and `@ppottorff` owns everything. Either grant the teams write access or remove the team lines.
-- Access can no longer be split per directory. Anyone with write access can change any directory.
+There is no CODEOWNERS file. Anyone with write access can change any directory, and review is by convention: ask the owning team (see the Layout table) to review changes to their directory.
 
 ## Status
 
