@@ -1,0 +1,6 @@
+# Submodule pointer bumps need approval from the owning team.
+# File-level ownership lives in each submodule's own .github/CODEOWNERS.
+*                    @ppottorff
+/AgentsSkills        @SmarterPrey/AgentsSkillsDevs
+/AgentRegistries     @SmarterPrey/AgentRegistryDevs
+/DevOps-Team-Content @SmarterPrey/DevOpsDevs
