@@ -3,6 +3,9 @@ import { Construct } from 'constructs';
 
 export interface GithubOidcStackProps extends StackProps {
   readonly repo: string; // owner/name
+  // Prefix of the OIDC `sub` claim, up to ":environment:". Must match the repo's OIDC subject setting
+  // (gh api repos/<repo>/actions/oidc/customization/sub); defaults to the classic "repo:<repo>".
+  readonly subjectPrefix?: string;
 }
 
 // GitHub environment -> variable values. A role trusts exactly one environment, so a run from the dev
@@ -17,7 +20,15 @@ const ENVIRONMENTS = [
 const WORKFLOWS: { id: string; variable: string; cdk: boolean; extra?: (prefix: string) => iam.PolicyStatement[] }[] = [
   { id: 'registries', variable: 'REGISTRIES_DEPLOY_ROLE_ARN', cdk: true },
   { id: 'skills', variable: 'SKILLS_DEPLOY_ROLE_ARN', cdk: true },
-  { id: 'agents', variable: 'AGENTS_DEPLOY_ROLE_ARN', cdk: true },
+  {
+    id: 'agents',
+    variable: 'AGENTS_DEPLOY_ROLE_ARN',
+    cdk: true,
+    // Authenticated pulls from public.ecr.aws (anonymous pulls from CI hit 429s).
+    extra: () => [
+      new iam.PolicyStatement({ actions: ['ecr-public:GetAuthorizationToken', 'sts:GetServiceBearerToken'], resources: ['*'] }),
+    ],
+  },
   { id: 'quick-config', variable: 'QUICK_CONFIG_DEPLOY_ROLE_ARN', cdk: true },
   {
     id: 'kiro-config',
@@ -60,7 +71,7 @@ export class GithubOidcStack extends Stack {
           assumedBy: new iam.WebIdentityPrincipal(provider.oidcProviderArn, {
             StringEquals: {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': `repo:${props.repo}:environment:${env.name}`,
+              'token.actions.githubusercontent.com:sub': `${props.subjectPrefix ?? `repo:${props.repo}`}:environment:${env.name}`,
             },
           }),
         });

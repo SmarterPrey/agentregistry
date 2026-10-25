@@ -94,7 +94,7 @@ Neither blocks calls to other registries at the network level. An SCP denying `a
 
 ### AWS access for the workflows (GitHub OIDC)
 
-The workflows sign in with short-lived GitHub OIDC tokens, so no AWS keys are stored in GitHub. `github-oidc-setup` creates the GitHub OIDC provider and 12 roles (6 workflows x `production`/`dev`). Each role trusts only `repo:SmarterPrey/devcore:environment:<name>`, so a dev run can't assume a production role. The roles deploy through the CDK bootstrap roles (`cdk-hnb659fds-*`), so they hold almost no permissions themselves; the content-sync and Kiro-config roles add scoped S3 access.
+The workflows sign in with short-lived GitHub OIDC tokens, so no AWS keys are stored in GitHub. `github-oidc-setup` creates the GitHub OIDC provider and 12 roles (6 workflows x `production`/`dev`). Each role trusts only `repo:SmarterPrey@135157929/devcore@1429268110:environment:<name>` (this repo's immutable OIDC subject; check yours with `gh api repos/SmarterPrey/devcore/actions/oidc/customization/sub` and override with `-c subjectPrefix=...`), so a dev run can't assume a production role. The roles deploy through the CDK bootstrap roles (`cdk-hnb659fds-*`), so they hold almost no permissions themselves; the content-sync and Kiro-config roles add scoped S3 access.
 
 Run once, with an administrator session in the target account, in a Region where CDK is bootstrapped (us-east-1 here):
 

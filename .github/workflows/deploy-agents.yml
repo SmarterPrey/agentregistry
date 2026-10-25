@@ -77,6 +77,11 @@ jobs:
         with:
           role-to-assume: ${{ vars.AGENTS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+      # Anonymous pulls from public.ecr.aws are rate-limited per shared runner IP (429 "Data limit exceeded");
+      # an authenticated pull gets a much higher limit. Public ECR tokens are only issued in us-east-1.
+      - uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
       - run: npm ci
       - run: npm run build --if-present
       - run: npm run check --if-present
