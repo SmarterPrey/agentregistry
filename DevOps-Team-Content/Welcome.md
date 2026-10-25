@@ -1,0 +1,1 @@
+This new vault documents stuff that will be published in an mcp server and added to a registry that used by Kiro, Copilot, and Quick.

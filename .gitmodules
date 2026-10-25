@@ -1,9 +1,0 @@
-[submodule "AgentsSkills"]
-	path = AgentsSkills
-	url = https://github.com/SmarterPrey/AgentsSkills.git
-[submodule "AgentRegistries"]
-	path = AgentRegistries
-	url = https://github.com/SmarterPrey/AgentRegistries.git
-[submodule "DevOps-Team-Content"]
-	path = DevOps-Team-Content
-	url = https://github.com/SmarterPrey/DevOps-Team-Content.git

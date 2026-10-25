@@ -1,0 +1,9 @@
+{
+  "name": "agentregistry",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "synth": "npm run synth --workspaces --if-present"
+  }
+}
