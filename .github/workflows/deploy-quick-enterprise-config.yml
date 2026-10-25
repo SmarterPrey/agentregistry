@@ -1,0 +1,44 @@
+name: Deploy Quick enterprise configuration
+
+# Deploys the customer-managed Quick service role limited to the Quick registry. Needs the registries
+# deployed first (it imports the registry ARN). Linking the registry in Quick stays a manual console step.
+# Pushes to main deploy prod; pushes to dev deploy the dev stage (dev- prefixed names) in the same account.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - quick-enterprise-configuration/**
+      - .github/workflows/deploy-quick-enterprise-config.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-quick-enterprise-config-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+    defaults:
+      run:
+        working-directory: quick-enterprise-configuration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: quick-enterprise-configuration/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.QUICK_CONFIG_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: npm ci
+      - run: npm run check
+      - run: npm run deploy -- -c stage=$STAGE

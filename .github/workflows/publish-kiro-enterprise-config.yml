@@ -1,0 +1,56 @@
+name: Publish Kiro enterprise configuration
+
+# Deploys the allow-list hosting stack, uploads mcp-registry.json, and refreshes the CDN. Setting the
+# allow-list URL in the Kiro console stays a manual step (the URL is the stack's AllowListUrl output).
+# Pushes to main publish prod; pushes to dev publish the dev stage (dev- prefixed names) in the same account.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - kiro-enterprise-configuration/**
+      - AgentRegistries/shared/remote-mcp-servers.json
+      - .github/workflows/publish-kiro-enterprise-config.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: publish-kiro-enterprise-config-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+      STACK_PREFIX: ${{ github.ref_name == 'dev' && 'dev-' || '' }}
+    defaults:
+      run:
+        working-directory: kiro-enterprise-configuration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kiro-enterprise-configuration/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.KIRO_CONFIG_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: npm ci
+      - run: npm run check
+      - run: npm run validate
+      - run: npm run deploy -- -c stage=$STAGE
+      - name: Upload allow-list
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}KiroEnterpriseConfigStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          bucket=$(out ConfigBucketName)
+          dist=$(out DistributionId)
+          aws s3 cp mcp-registry.json "s3://$bucket/mcp-registry.json" --content-type application/json
+          aws cloudfront create-invalidation --distribution-id "$dist" --paths /mcp-registry.json >/dev/null
+          echo "Allow-list URL: $(out AllowListUrl)" >> "$GITHUB_STEP_SUMMARY"

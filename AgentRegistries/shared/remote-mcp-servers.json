@@ -1,0 +1,23 @@
+[
+  {
+    "id": "GitHub",
+    "name": "github",
+    "title": "GitHub",
+    "description": "GitHub remote MCP server: repositories, issues, pull requests, and Actions.",
+    "url": "https://api.githubcopilot.com/mcp/"
+  },
+  {
+    "id": "Wiz",
+    "name": "wiz",
+    "title": "Wiz",
+    "description": "Wiz remote MCP server: cloud security issues, vulnerabilities, and resource context.",
+    "url": "https://mcp.app.wiz.io/"
+  },
+  {
+    "id": "MsLearn",
+    "name": "mslearn",
+    "title": "Microsoft Learn",
+    "description": "Microsoft Learn remote MCP server: search and fetch official Microsoft and Azure documentation.",
+    "url": "https://learn.microsoft.com/api/mcp"
+  }
+]

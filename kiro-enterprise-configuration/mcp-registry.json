@@ -1,0 +1,31 @@
+{
+  "servers": [
+    {
+      "server": {
+        "name": "github",
+        "title": "GitHub",
+        "description": "GitHub remote MCP server: repositories, issues, pull requests, Actions.",
+        "version": "1.0.0",
+        "remotes": [{ "type": "streamable-http", "url": "https://api.githubcopilot.com/mcp/" }]
+      }
+    },
+    {
+      "server": {
+        "name": "wiz",
+        "title": "Wiz",
+        "description": "Wiz remote MCP server: cloud security issues and resource context.",
+        "version": "1.0.0",
+        "remotes": [{ "type": "streamable-http", "url": "https://mcp.app.wiz.io/" }]
+      }
+    },
+    {
+      "server": {
+        "name": "mslearn",
+        "title": "Microsoft Learn",
+        "description": "Microsoft Learn remote MCP server: official Microsoft and Azure docs.",
+        "version": "1.0.0",
+        "remotes": [{ "type": "streamable-http", "url": "https://learn.microsoft.com/api/mcp" }]
+      }
+    }
+  ]
+}

@@ -1,15 +1,23 @@
-import { Stack, StackProps, aws_agentregistry as ar } from 'aws-cdk-lib';
+import { CfnOutput, Stack, StackProps, aws_agentregistry as ar } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { resourcePrefix, stackPrefix } from '../../../shared/stage';
+import { addDevopsContentMcp, addRemoteMcpServers } from '../../../shared/remote-mcp-servers';
 
 // Linked to Amazon Quick by an admin; must be AWS_IAM, same account and Region.
 export class QuickAgentRegistryStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
-    new ar.CfnRegistry(this, 'Registry', {
-      name: 'quick_agent_registry',
+    const registry = new ar.CfnRegistry(this, 'Registry', {
+      name: `${resourcePrefix(this)}quick_agent_registry`,
       description: 'Business-facing MCP servers and agents for Amazon Quick',
       authorizerType: 'AWS_IAM',
     });
+
+    // Imported by the skills publisher (AgentsSkills/skills-publisher).
+    new CfnOutput(this, 'RegistryArn', { value: registry.attrRegistryArn, exportName: `${stackPrefix(this)}AgentRegistries-QuickRegistryArn` });
+
+    addRemoteMcpServers(this, registry);
+    addDevopsContentMcp(this, registry);
   }
 }

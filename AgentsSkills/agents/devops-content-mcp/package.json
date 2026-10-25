@@ -1,18 +1,25 @@
 {
-  "name": "@agentregistry/devops-content-mcp",
+  "name": "devops-content-mcp",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit -p tsconfig.infra.json",
     "start": "node dist/server.js",
-    "dev": "ts-node src/server.ts"
+    "dev": "ts-node src/server.ts",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --require-approval never"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3",
     "@modelcontextprotocol/sdk": "^1",
     "zod": "^4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "aws-cdk": "^2",
+    "aws-cdk-lib": "^2.274.0",
+    "constructs": "^10.0.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.6.0"
   }
