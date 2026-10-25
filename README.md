@@ -1,6 +1,6 @@
-# agentregistry
+# devcore
 
-Umbrella repo for the AgentCore registries that publish MCP servers, agents, skills, and team content to Kiro and Amazon Quick. It holds no code of its own. It pins three repos as git submodules so they can be cloned and versioned together while each is owned and changed independently.
+Umbrella repo for infrastructure stacks that deploy AI and developer services on AWS, including the AgentCore registries and MCP services used by Kiro and Amazon Quick. It brings together independently owned repositories as Git submodules so their stacks and supporting agents, skills, and team content can be versioned together; implementation work happens in the submodules.
 
 ## Repos
 
@@ -30,8 +30,8 @@ AgentsSkills  ──agents and skills published to──┘
 ## Getting started
 
 ```
-git clone --recurse-submodules https://github.com/SmarterPrey/agentregistry.git
-cd agentregistry/AgentRegistries
+git clone --recurse-submodules https://github.com/SmarterPrey/devcore.git
+cd devcore/AgentRegistries
 npm install
 npm run build
 npm run synth
