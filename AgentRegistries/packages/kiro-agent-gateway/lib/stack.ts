@@ -18,11 +18,10 @@ export class KiroAgentGatewayStack extends Stack {
       removalPolicy: RemovalPolicy.RETAIN,
     });
 
-    // Where the browser returns after sign-in. Kiro takes the port from the oauth.redirectUri in the user's
-    // mcp.json (default 3334 here) and appends /oauth/callback; Cognito matches the URL exactly, so allow
-    // both loopback hosts. Override with -c kiroOAuthCallbackUrls=http://127.0.0.1:<port>/oauth/callback[,...].
+    // Where the browser returns after sign-in. Kiro's loopback callback port isn't confirmed; override with
+    // -c kiroOAuthCallbackUrls=http://localhost:<port>/oauth/callback[,...] once you know it.
     const callbackUrls = ((this.node.tryGetContext('kiroOAuthCallbackUrls') as string | undefined) ??
-      'http://localhost:3334/oauth/callback,http://127.0.0.1:3334/oauth/callback')
+      'http://localhost:3334/oauth/callback')
       .split(',')
       .map((u) => u.trim())
       .filter(Boolean);
