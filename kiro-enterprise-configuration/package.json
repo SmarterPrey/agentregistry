@@ -5,6 +5,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "validate": "ts-node scripts/validate.ts",
+    "build:allowlist": "ts-node scripts/build.ts",
     "synth": "cdk synth",
     "deploy": "cdk deploy --require-approval never"
   },

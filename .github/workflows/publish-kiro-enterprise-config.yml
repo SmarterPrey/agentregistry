@@ -9,6 +9,7 @@ on:
     paths:
       - kiro-enterprise-configuration/**
       - AgentRegistries/shared/remote-mcp-servers.json
+      - AgentRegistries/packages/kiro-agent-gateway/**
       - .github/workflows/publish-kiro-enterprise-config.yml
   workflow_dispatch:
 
@@ -45,12 +46,21 @@ jobs:
       - run: npm run check
       - run: npm run validate
       - run: npm run deploy -- -c stage=$STAGE
+      # The registry's MCP endpoint differs per stage, so it is added to the committed list at publish time.
+      # Without the Kiro registry stack deployed, the allow-list is published without it.
+      - name: Build allow-list
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}KiroAgentGatewayStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='RegistryMcpUrl'].OutputValue" --output text 2>/dev/null || true)
+          if [ -n "$url" ] && [ "$url" != "None" ]; then export REGISTRY_MCP_URL="$url"; fi
+          npm run build:allowlist
+          npm run validate build/mcp-registry.json
       - name: Upload allow-list
         run: |
           out() { aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}KiroEnterpriseConfigStack" \
             --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
           bucket=$(out ConfigBucketName)
           dist=$(out DistributionId)
-          aws s3 cp mcp-registry.json "s3://$bucket/mcp-registry.json" --content-type application/json
+          aws s3 cp build/mcp-registry.json "s3://$bucket/mcp-registry.json" --content-type application/json
           aws cloudfront create-invalidation --distribution-id "$dist" --paths /mcp-registry.json >/dev/null
           echo "Allow-list URL: $(out AllowListUrl)" >> "$GITHUB_STEP_SUMMARY"

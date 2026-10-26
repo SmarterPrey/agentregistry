@@ -154,3 +154,6 @@ dist/
 
 # macOS
 .DS_Store
+
+# Generated allow-list (scripts/build.ts)
+/build
