@@ -137,8 +137,9 @@ There is no CODEOWNERS file. Anyone with write access can change any directory, 
 
 ## Status
 
-- `github-oidc-setup` is deployed (us-east-1) and the `production` and `dev` GitHub environments have their role and `AWS_REGION` variables set. Nothing else is deployed yet, and no registry records exist. The workflows need CDK bootstrapped in each target Region. The environments have no protection rules yet.
-- The devops-content registry record is skipped until `DevopsContentMcpStack` is deployed.
+- The `dev` stage is deployed in us-east-1: `github-oidc-setup`, both registries, the skills publisher, the devops-content agent, and both enterprise configurations. Production is not deployed. The GitHub environments have no protection rules yet.
+- Kiro connects to the Kiro registry.
+- The `my-codereview` skill is published as a record in both registries, but Kiro can't connect to it yet.
+- The devops-content MCP server is deployed and registered, with JWT auth from the Kiro registry's Cognito pool, but it hasn't been tested from Kiro.
 - Two console steps have no API and stay manual: linking the registry and choosing the service role in Quick, and setting the allow-list URL in Kiro.
-- Not yet checked against a real deployment: the skill and MCP record descriptor formats, and the AgentCore Runtime endpoint URL.
 - `AgentsSkills/agents/example-agent` is a placeholder.
