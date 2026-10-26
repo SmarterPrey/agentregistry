@@ -85,4 +85,18 @@ jobs:
       - run: npm ci
       - run: npm run build --if-present
       - run: npm run check --if-present
-      - run: npm run deploy -- -c stage=$STAGE
+      # The devops-content runtime accepts Kiro's Cognito tokens. Read the pool and client from the Kiro registry
+      # stack; if it isn't deployed yet the runtime stays on IAM auth and the next agents deploy switches it.
+      - name: Look up Kiro sign-in pool
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}KiroAgentGatewayStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text 2>/dev/null || true; }
+          pool=$(out UserPoolId); client=$(out KiroClientId)
+          if [ -n "$pool" ] && [ "$pool" != "None" ] && [ -n "$client" ] && [ "$client" != "None" ]; then
+            echo "JWT_ARGS=-c jwtDiscoveryUrl=https://cognito-idp.${AWS_REGION}.amazonaws.com/${pool}/.well-known/openid-configuration -c jwtAllowedClients=${client}" >> "$GITHUB_ENV"
+          else
+            echo "::warning::KiroAgentGatewayStack not found; deploying with IAM auth"
+          fi
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+      - run: npm run deploy -- -c stage=$STAGE $JWT_ARGS

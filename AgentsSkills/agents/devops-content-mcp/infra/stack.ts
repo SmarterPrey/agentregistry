@@ -16,6 +16,12 @@ import { Construct } from 'constructs';
 // the sync-devops-content workflow keeps in step with DevOps-Team-Content.
 export interface DevopsContentMcpStackProps extends StackProps {
   readonly runtimeNamePrefix?: string;
+  // When set, callers authenticate with a JWT from this OIDC issuer (the Kiro registry's Cognito pool)
+  // instead of SigV4, so Kiro can connect as an ordinary remote MCP server.
+  readonly jwtAuthorizer?: {
+    readonly discoveryUrl: string;
+    readonly allowedClients: string[];
+  };
 }
 
 export class DevopsContentMcpStack extends Stack {
@@ -58,10 +64,17 @@ export class DevopsContentMcpStack extends Stack {
       agentRuntimeArtifact: { containerConfiguration: { containerUri: image.imageUri } },
       networkConfiguration: { networkMode: 'PUBLIC' },
       environmentVariables: { VAULT_BUCKET: contentBucket.bucketName },
+      authorizerConfiguration: props.jwtAuthorizer && {
+        customJwtAuthorizer: {
+          discoveryUrl: props.jwtAuthorizer.discoveryUrl,
+          allowedClients: props.jwtAuthorizer.allowedClients,
+        },
+      },
     });
     runtime.node.addDependency(role);
 
-    // Default authorizer is IAM (SigV4), so callers need bedrock-agentcore:InvokeAgentRuntime.
+    // Without jwtAuthorizer the authorizer is IAM (SigV4): callers need bedrock-agentcore:InvokeAgentRuntime.
+    // With it, callers send a Cognito access token as a bearer token and the runtime checks its client_id.
     const encodedArn = Fn.join('', [
       'arn%3Aaws%3Abedrock-agentcore%3A', this.region, '%3A', this.account, '%3Aruntime%2F', runtime.attrAgentRuntimeId,
     ]);
