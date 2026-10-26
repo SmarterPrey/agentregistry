@@ -6,8 +6,7 @@ import * as path from 'node:path';
 const REMOTE_MCP_SERVERS: { name: string; url: string }[] = JSON.parse(
   readFileSync(path.join(__dirname, '../../AgentRegistries/shared/remote-mcp-servers.json'), 'utf8'),
 );
-// Defaults to the committed file; the publish workflow also validates the built one (npm run validate build/mcp-registry.json).
-const file = path.resolve(process.argv[2] ?? path.join(__dirname, '../mcp-registry.json'));
+const file = path.join(__dirname, '../mcp-registry.json');
 const doc = JSON.parse(readFileSync(file, 'utf8')) as { servers: { server: any }[] };
 const errors: string[] = [];
 const names = new Set<string>();
@@ -35,4 +34,4 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log(`${path.basename(file)} ok (${doc.servers.length} servers)`);
+console.log(`mcp-registry.json ok (${doc.servers.length} servers)`);
