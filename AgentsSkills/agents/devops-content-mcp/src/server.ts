@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import { VAULT_DIR, listNotes, readNote, searchNotes } from './vault';
+import { VAULT_LOCATION, listNotes, readNote, searchNotes } from './vault';
 
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
 const fail = (e: unknown) => ({ ...text(e instanceof Error ? e.message : String(e)), isError: true });
@@ -67,7 +67,7 @@ async function main() {
       await server.connect(transport);
       await transport.handleRequest(req, res);
     })
-    .listen(port, '0.0.0.0', () => console.error(`devops-content MCP on :${port}/mcp, vault ${VAULT_DIR}`));
+    .listen(port, '0.0.0.0', () => console.error(`devops-content MCP on :${port}/mcp, vault ${VAULT_LOCATION}`));
 }
 
 main().catch((e) => {

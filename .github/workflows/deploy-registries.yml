@@ -1,0 +1,66 @@
+name: Deploy registries
+
+# Deploys the Kiro and Quick registry stacks (AgentRegistries). Independent of skills and agents.
+# Pushes to main deploy prod; pushes to dev deploy the dev stage (dev- / dev_ prefixed names) in the same
+# account, using the GitHub environment of that name for its variables.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - AgentRegistries/**
+      - .github/workflows/deploy-registries.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-registries-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+      STACK_PREFIX: ${{ github.ref_name == 'dev' && 'dev-' || '' }}
+    defaults:
+      run:
+        working-directory: AgentRegistries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - workspace: "@agentregistry/kiro-agent-gateway"
+            stack: KiroAgentGatewayStack
+          - workspace: "@agentregistry/quick-agent-registry"
+            stack: QuickAgentRegistryStack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AgentRegistries/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.REGISTRIES_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: npm ci
+      - run: npm run build
+
+      # The devops-content record needs the agent's endpoint. If that stack isn't deployed yet, the
+      # record is skipped and added on the next registries deploy.
+      - name: Look up devops-content MCP URL
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}DevopsContentMcpStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='McpUrl'].OutputValue" --output text 2>/dev/null || true)
+          if [ -n "$url" ] && [ "$url" != "None" ]; then echo "DEVOPS_CONTENT_MCP_URL=$url" >> "$GITHUB_ENV"; fi
+
+      - name: Deploy ${{ matrix.stack }} (${{ env.STAGE }})
+        run: |
+          args=(-c "stage=$STAGE")
+          if [ -n "${DEVOPS_CONTENT_MCP_URL:-}" ]; then args+=(-c "devopsContentMcpUrl=$DEVOPS_CONTENT_MCP_URL"); fi
+          npm exec -w "${{ matrix.workspace }}" -- cdk deploy "${STACK_PREFIX}${{ matrix.stack }}" --require-approval never "${args[@]}"

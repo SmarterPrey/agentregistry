@@ -1,0 +1,47 @@
+name: Deploy skills
+
+# Publishes AgentsSkills/skills/* as SKILL records in both registries. Needs the registries deployed
+# first (it imports their ARNs), but is otherwise independent of agents.
+# Pushes to main deploy prod; pushes to dev deploy the dev stage (dev- / dev_ prefixed names) in the same
+# account, using the GitHub environment of that name for its variables.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - AgentsSkills/skills/**
+      - AgentsSkills/skills-publisher/**
+      - .github/workflows/deploy-skills.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-skills-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+      STACK_PREFIX: ${{ github.ref_name == 'dev' && 'dev-' || '' }}
+    defaults:
+      run:
+        working-directory: AgentsSkills/skills-publisher
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AgentsSkills/skills-publisher/package-lock.json
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.SKILLS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: npm ci
+      - run: npm run check
+      - run: npm run deploy -- -c stage=$STAGE

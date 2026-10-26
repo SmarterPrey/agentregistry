@@ -1,0 +1,47 @@
+name: Sync DevOps content
+
+# Mirrors DevOps-Team-Content to the S3 bucket the devops-content MCP server reads from.
+# The bucket belongs to [dev-]DevopsContentMcpStack, so deploy that agent first. Dev syncs to the dev bucket.
+# Pushes to main deploy prod; pushes to dev deploy the dev stage (dev- / dev_ prefixed names) in the same
+# account, using the GitHub environment of that name for its variables.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - DevOps-Team-Content/**
+      - .github/workflows/sync-devops-content.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: sync-devops-content-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+      STACK_PREFIX: ${{ github.ref_name == 'dev' && 'dev-' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CONTENT_SYNC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Look up content bucket
+        run: |
+          bucket=$(aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}DevopsContentMcpStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='ContentBucketName'].OutputValue" --output text)
+          [ -n "$bucket" ] && [ "$bucket" != "None" ] || { echo "DevopsContentMcpStack has no ContentBucketName output; deploy the agent first" >&2; exit 1; }
+          echo "CONTENT_BUCKET=$bucket" >> "$GITHUB_ENV"
+      # Only Markdown notes are served. Hidden paths (.obsidian, .copilot) never leave the repo, and
+      # --delete removes notes deleted or renamed in the vault (the bucket is versioned).
+      - name: Sync notes
+        run: |
+          aws s3 sync DevOps-Team-Content "s3://$CONTENT_BUCKET/" --delete \
+            --exclude "*" --include "*.md" --exclude ".*" --exclude "*/.*"

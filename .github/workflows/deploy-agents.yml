@@ -1,0 +1,102 @@
+name: Deploy agents
+
+# Each directory under AgentsSkills/agents with a cdk.json is its own CDK app and deploys on its own.
+# On push, only agents whose directory changed are deployed. Run manually to deploy one or all.
+# Pushes to main deploy prod; pushes to dev deploy the dev stage (dev- / dev_ prefixed names) in the same
+# account, using the GitHub environment of that name for its variables.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - AgentsSkills/agents/**
+      - .github/workflows/deploy-agents.yml
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: Agent directory name, or "all"
+        default: all
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      agents: ${{ steps.find.outputs.agents }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: find
+        run: |
+          all=$(for f in AgentsSkills/agents/*/cdk.json; do [ -e "$f" ] && basename "$(dirname "$f")"; done)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ inputs.agent }}" = "all" ]; then sel="$all"; else sel="${{ inputs.agent }}"; fi
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] \
+            || git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep -qx '.github/workflows/deploy-agents.yml'; then
+            sel="$all"
+          else
+            changed=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}")
+            sel=$(for a in $all; do echo "$changed" | grep -q "^AgentsSkills/agents/$a/" && echo "$a"; done)
+          fi
+          echo "agents=$(printf '%s\n' $sel | jq -R . | jq -sc 'map(select(length>0))')" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: discover
+    if: needs.discover.outputs.agents != '[]'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'dev' && 'dev' || 'production' }}
+    env:
+      STAGE: ${{ github.ref_name == 'dev' && 'dev' || 'prod' }}
+      STACK_PREFIX: ${{ github.ref_name == 'dev' && 'dev-' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: ${{ fromJson(needs.discover.outputs.agents) }}
+    concurrency:
+      group: deploy-agent-${{ matrix.agent }}-${{ github.ref_name }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: AgentsSkills/agents/${{ matrix.agent }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: AgentsSkills/agents/${{ matrix.agent }}/package-lock.json
+      # Agent images are linux/arm64 (AgentCore Runtime); build them under emulation.
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AGENTS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      # Anonymous pulls from public.ecr.aws are rate-limited per shared runner IP (429 "Data limit exceeded");
+      # an authenticated pull gets a much higher limit. Public ECR tokens are only issued in us-east-1.
+      - uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm run check --if-present
+      # The devops-content runtime accepts Kiro's Cognito tokens. Read the pool and client from the Kiro registry
+      # stack; if it isn't deployed yet the runtime stays on IAM auth and the next agents deploy switches it.
+      - name: Look up Kiro sign-in pool
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name "${STACK_PREFIX}KiroAgentGatewayStack" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text 2>/dev/null || true; }
+          pool=$(out UserPoolId); client=$(out KiroClientId)
+          if [ -n "$pool" ] && [ "$pool" != "None" ] && [ -n "$client" ] && [ "$client" != "None" ]; then
+            echo "JWT_ARGS=-c jwtDiscoveryUrl=https://cognito-idp.${AWS_REGION}.amazonaws.com/${pool}/.well-known/openid-configuration -c jwtAllowedClients=${client}" >> "$GITHUB_ENV"
+          else
+            echo "::warning::KiroAgentGatewayStack not found; deploying with IAM auth"
+          fi
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+      - run: npm run deploy -- -c stage=$STAGE $JWT_ARGS
